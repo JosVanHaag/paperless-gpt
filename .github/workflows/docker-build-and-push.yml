@@ -61,8 +61,12 @@ jobs:
       digest: ${{ steps.build_amd64.outputs.digest }}
       image_tag: ${{ steps.set_image_tag.outputs.image_tag }}
     steps:
-      - name: Normalize repository owner (lowercase)
-        run: echo "REPO_OWNER_LC=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+      - name: Normalize repository identifiers (lowercase)
+        run: |
+          REPO_OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO_NAME_LC=$(echo "${GITHUB_REPOSITORY#*/}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_OWNER_LC=${REPO_OWNER_LC}" >> $GITHUB_ENV
+          echo "REPO_NAME_LC=${REPO_NAME_LC}" >> $GITHUB_ENV
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Set up Docker Buildx
@@ -84,7 +88,7 @@ jobs:
         run: |
           # Set repository names
           DOCKERHUB_REPO="icereed/paperless-gpt"
-          GHCR_REPO="ghcr.io/${GITHUB_REPOSITORY}"
+          GHCR_REPO="ghcr.io/${REPO_OWNER_LC}/${REPO_NAME_LC}"
           
           if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
             echo "TAGS=${DOCKERHUB_REPO}:pr-${GITHUB_SHA}-amd64,${GHCR_REPO}:pr-${GITHUB_SHA}-amd64" >> $GITHUB_ENV
@@ -127,8 +131,12 @@ jobs:
     outputs:
       digest: ${{ steps.build_arm64.outputs.digest }}
     steps:
-      - name: Normalize repository owner (lowercase)
-        run: echo "REPO_OWNER_LC=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+      - name: Normalize repository identifiers (lowercase)
+        run: |
+          REPO_OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO_NAME_LC=$(echo "${GITHUB_REPOSITORY#*/}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_OWNER_LC=${REPO_OWNER_LC}" >> $GITHUB_ENV
+          echo "REPO_NAME_LC=${REPO_NAME_LC}" >> $GITHUB_ENV
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Set up Docker Buildx
@@ -151,7 +159,7 @@ jobs:
         run: |
           # Set repository names
           DOCKERHUB_REPO="icereed/paperless-gpt"
-          GHCR_REPO="ghcr.io/${GITHUB_REPOSITORY}"
+          GHCR_REPO="ghcr.io/${REPO_OWNER_LC}/${REPO_NAME_LC}"
           
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
@@ -189,10 +197,12 @@ jobs:
     if: github.event_name != 'pull_request'
     env:
       DOCKERHUB_REPO: icereed/paperless-gpt
-      GHCR_REPO: ghcr.io/${{ github.repository }}
+      GHCR_REPO: ghcr.io/${{ toLower(github.repository) }}
     steps:
       - name: Normalize repository owner (lowercase)
-        run: echo "REPO_OWNER_LC=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        run: |
+          REPO_OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_OWNER_LC=${REPO_OWNER_LC}" >> $GITHUB_ENV
       - name: Download amd64 digest
         uses: actions/download-artifact@v5
         with:
