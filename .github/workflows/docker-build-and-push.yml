@@ -87,7 +87,7 @@ jobs:
         id: set_tags
         run: |
           # Set repository names
-          DOCKERHUB_REPO="icereed/paperless-gpt"
+          DOCKERHUB_REPO="josvanhaag/paperless-gpt"
           GHCR_REPO="ghcr.io/${REPO_OWNER_LC}/${REPO_NAME_LC}"
           
           if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
