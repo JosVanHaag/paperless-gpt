@@ -197,12 +197,14 @@ jobs:
     if: github.event_name != 'pull_request'
     env:
       DOCKERHUB_REPO: icereed/paperless-gpt
-      GHCR_REPO: ghcr.io/${{ toLower(github.repository) }}
     steps:
       - name: Normalize repository owner (lowercase)
         run: |
           REPO_OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO_NAME_LC=$(echo "${GITHUB_REPOSITORY#*/}" | tr '[:upper:]' '[:lower:]')
           echo "REPO_OWNER_LC=${REPO_OWNER_LC}" >> $GITHUB_ENV
+          echo "REPO_NAME_LC=${REPO_NAME_LC}" >> $GITHUB_ENV
+          echo "GHCR_REPO=ghcr.io/${REPO_OWNER_LC}/${REPO_NAME_LC}" >> $GITHUB_ENV
       - name: Download amd64 digest
         uses: actions/download-artifact@v5
         with:
