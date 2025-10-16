@@ -8,12 +8,12 @@ permissions:
 on:
   push:
     branches:
-      - bluebox/document-type
+      - bluebox/dev
     tags:
       - 'v*.*.*'
   pull_request:
     branches:
-      - bluebox/document-type
+      - bluebox/dev
 
 jobs:
   test:
