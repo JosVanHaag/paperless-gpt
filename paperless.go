@@ -268,6 +268,16 @@ func (client *PaperlessClient) GetDocumentsByTags(ctx context.Context, tags []st
 		return nil, err
 	}
 
+	allDocumentTypes, err := client.GetAllDocumentTypes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	documentTypeIDToName := make(map[int]string, len(allDocumentTypes))
+	for _, docType := range allDocumentTypes {
+		documentTypeIDToName[docType.ID] = docType.Name
+	}
+
 	documents := make([]Document, 0, len(documentsResponse.Results))
 	for _, result := range documentsResponse.Results {
 		tagNames := make([]string, len(result.Tags))
@@ -290,13 +300,21 @@ func (client *PaperlessClient) GetDocumentsByTags(ctx context.Context, tags []st
 			}
 		}
 
+		documentTypeName := ""
+		if result.DocumentType != nil {
+			if name, ok := documentTypeIDToName[*result.DocumentType]; ok {
+				documentTypeName = name
+			}
+		}
+
 		documents = append(documents, Document{
-			ID:            result.ID,
-			Title:         result.Title,
-			Content:       result.Content,
-			Correspondent: correspondentName,
-			Tags:          tagNames,
-			CreatedDate:   result.CreatedDate,
+			ID:               result.ID,
+			Title:            result.Title,
+			Content:          result.Content,
+			Correspondent:    correspondentName,
+			Tags:             tagNames,
+			CreatedDate:      result.CreatedDate,
+			DocumentTypeName: documentTypeName,
 		})
 	}
 
@@ -424,6 +442,16 @@ func (client *PaperlessClient) UpdateDocuments(ctx context.Context, documents []
 		return fmt.Errorf("error fetching available correspondents: %w", err)
 	}
 
+	documentTypes, err := client.GetAllDocumentTypes(ctx)
+	if err != nil {
+		return fmt.Errorf("error fetching document types: %w", err)
+	}
+
+	documentTypeNameToID := make(map[string]int, len(documentTypes))
+	for _, dt := range documentTypes {
+		documentTypeNameToID[dt.Name] = dt.ID
+	}
+
 	for _, document := range documents {
 		documentID := document.ID
 		originalDoc := document.OriginalDocument
@@ -479,6 +507,31 @@ func (client *PaperlessClient) UpdateDocuments(ctx context.Context, documents []
 					return fmt.Errorf("error creating correspondent '%s': %w", document.SuggestedCorrespondent, err)
 				}
 				updatedFields["correspondent"] = newCorrID
+			}
+		}
+
+		// --- DOCUMENT TYPE ---
+		if document.SuggestedDocumentType != "" {
+			if !strings.EqualFold(document.SuggestedDocumentType, originalDoc.DocumentTypeName) {
+				normalizedSuggestedDocumentType := document.SuggestedDocumentType
+				var (
+					docTypeID int
+					found     bool
+				)
+				for name, id := range documentTypeNameToID {
+					if strings.EqualFold(name, normalizedSuggestedDocumentType) {
+						docTypeID = id
+						normalizedSuggestedDocumentType = name
+						found = true
+						break
+					}
+				}
+				if found {
+					originalFields["document_type"] = originalDoc.DocumentTypeName
+					updatedFields["document_type"] = docTypeID
+				} else {
+					log.Warnf("Suggested document type '%s' for document %d not found in available types, skipping.", document.SuggestedDocumentType, documentID)
+				}
 			}
 		}
 

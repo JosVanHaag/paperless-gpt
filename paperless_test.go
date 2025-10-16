@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -39,7 +40,12 @@ func newTestEnv(t *testing.T) *testEnv {
 	env.db = db
 
 	// Create a mock server with a handler that dispatches based on URL path
-	env.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("Skipping network-dependent test: %v", err)
+	}
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		env.requestCount++
 		handler, exists := env.mockResponses[r.URL.Path]
 		if !exists {
@@ -49,6 +55,9 @@ func newTestEnv(t *testing.T) *testEnv {
 		assert.Equal(t, "Token test-token", r.Header.Get("Authorization"))
 		handler(w, r)
 	}))
+	server.Listener = listener
+	server.Start()
+	env.server = server
 
 	// Initialize the PaperlessClient with the mock server URL
 	env.client = NewPaperlessClient(env.server.URL, "test-token")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,17 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/stretchr/testify/assert"
 )
+
+func newLocalHTTPTestServer(t *testing.T, handler http.Handler) *httptest.Server {
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("Skipping Azure provider test: %v", err)
+	}
+	server := httptest.NewUnstartedServer(handler)
+	server.Listener = listener
+	server.Start()
+	return server
+}
 
 func TestNewAzureProvider(t *testing.T) {
 	tests := []struct {
@@ -132,7 +144,7 @@ func TestAzureProvider_ProcessImage(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		setupServer  func() *httptest.Server
+		setupServer  func(t *testing.T) *httptest.Server
 		imageContent []byte
 		wantErr      bool
 		errContains  string
@@ -140,9 +152,9 @@ func TestAzureProvider_ProcessImage(t *testing.T) {
 	}{
 		{
 			name: "successful processing",
-			setupServer: func() *httptest.Server {
+			setupServer: func(t *testing.T) *httptest.Server {
 				mux := http.NewServeMux()
-				server := httptest.NewServer(mux)
+				server := newLocalHTTPTestServer(t, mux)
 
 				mux.HandleFunc("/documentintelligence/documentModels/prebuilt-read:analyze", func(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Operation-Location", fmt.Sprintf("%s/operations/123", server.URL))
@@ -161,8 +173,8 @@ func TestAzureProvider_ProcessImage(t *testing.T) {
 		},
 		{
 			name: "invalid mime type",
-			setupServer: func() *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			setupServer: func(t *testing.T) *httptest.Server {
+				return newLocalHTTPTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					t.Log("Server should not be called with invalid mime type")
 					w.WriteHeader(http.StatusBadRequest)
 				}))
@@ -173,8 +185,8 @@ func TestAzureProvider_ProcessImage(t *testing.T) {
 		},
 		{
 			name: "submission error",
-			setupServer: func() *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			setupServer: func(t *testing.T) *httptest.Server {
+				return newLocalHTTPTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusBadRequest)
 					fmt.Fprintln(w, "Invalid request")
 				}))
@@ -187,7 +199,7 @@ func TestAzureProvider_ProcessImage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := tt.setupServer()
+			server := tt.setupServer(t)
 			defer server.Close()
 
 			client := retryablehttp.NewClient()

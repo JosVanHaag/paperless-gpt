@@ -82,7 +82,19 @@ Content: {{.Content}}
 Language: {{.Language}}
 Content: {{.Content}}
 `
+	testDocumentTypeTemplate = `
+Language: {{.Language}}
+Content: {{.Content}}
+Types: {{.AvailableDocumentTypes}}
+`
 )
+
+func skipIfTokenEncodingUnavailable(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Skipf("Skipping: token encoding data unavailable in offline environment (%v)", err)
+	}
+}
 
 func TestPromptTokenLimits(t *testing.T) {
 	testLogger := logrus.WithField("test", "test")
@@ -96,6 +108,8 @@ func TestPromptTokenLimits(t *testing.T) {
 	correspondentTemplate, err = template.New("correspondent").Parse(testCorrespondentTemplate)
 	require.NoError(t, err)
 	createdDateTemplate, err = template.New("created_date").Parse(testCreatedDateContentTemplate)
+	require.NoError(t, err)
+	documentTypeTemplate, err = template.New("document_type").Parse(testDocumentTypeTemplate)
 	require.NoError(t, err)
 
 	// Save current env and restore after test
@@ -149,6 +163,7 @@ Content: {{.Content}}
 
 			// Calculate available tokens
 			availableTokens, err := getAvailableTokensForContent(testTemplate, data)
+			skipIfTokenEncodingUnavailable(t, err)
 			require.NoError(t, err)
 
 			// Truncate content if needed
@@ -158,6 +173,7 @@ Content: {{.Content}}
 			// Test with the app's LLM
 			ctx := context.Background()
 			_, err = app.getSuggestedTitle(ctx, truncatedContent, "Test Title", testLogger)
+			skipIfTokenEncodingUnavailable(t, err)
 			require.NoError(t, err)
 
 			// Verify truncation
@@ -165,6 +181,7 @@ Content: {{.Content}}
 				// Count tokens in final prompt received by LLM
 				splitter := textsplitter.NewTokenSplitter()
 				tokens, err := splitter.SplitText(mockLLM.lastPrompt)
+				skipIfTokenEncodingUnavailable(t, err)
 				require.NoError(t, err)
 
 				// Verify prompt is within limits
@@ -211,11 +228,13 @@ func TestTokenLimitInCorrespondentGeneration(t *testing.T) {
 	correspondentBlackList := []string{"Blocked Corp"}
 
 	_, err := app.getSuggestedCorrespondent(ctx, longContent, "Test Title", availableCorrespondents, correspondentBlackList)
+	skipIfTokenEncodingUnavailable(t, err)
 	require.NoError(t, err)
 
 	// Verify the final prompt size
 	splitter := textsplitter.NewTokenSplitter()
 	tokens, err := splitter.SplitText(mockLLM.lastPrompt)
+	skipIfTokenEncodingUnavailable(t, err)
 	require.NoError(t, err)
 
 	// Final prompt should be within token limit
@@ -249,11 +268,13 @@ func TestTokenLimitInTagGeneration(t *testing.T) {
 	originalTags := []string{"original"}
 
 	_, err := app.getSuggestedTags(ctx, longContent, "Test Title", availableTags, originalTags, testLogger)
+	skipIfTokenEncodingUnavailable(t, err)
 	require.NoError(t, err)
 
 	// Verify the final prompt size
 	splitter := textsplitter.NewTokenSplitter()
 	tokens, err := splitter.SplitText(mockLLM.lastPrompt)
+	skipIfTokenEncodingUnavailable(t, err)
 	require.NoError(t, err)
 
 	// Final prompt should be within token limit
@@ -285,11 +306,13 @@ func TestTokenLimitInTitleGeneration(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := app.getSuggestedTitle(ctx, longContent, "Original Title", testLogger)
+	skipIfTokenEncodingUnavailable(t, err)
 	require.NoError(t, err)
 
 	// Verify the final prompt size
 	splitter := textsplitter.NewTokenSplitter()
 	tokens, err := splitter.SplitText(mockLLM.lastPrompt)
+	skipIfTokenEncodingUnavailable(t, err)
 	require.NoError(t, err)
 
 	// Final prompt should be within token limit
@@ -321,14 +344,54 @@ func TestTokenLimitInCreatedDateGeneration(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := app.getSuggestedCreatedDate(ctx, longContent, testLogger)
+	skipIfTokenEncodingUnavailable(t, err)
 	require.NoError(t, err)
 
 	// Verify the final prompt size
 	splitter := textsplitter.NewTokenSplitter()
 	tokens, err := splitter.SplitText(mockLLM.lastPrompt)
+	skipIfTokenEncodingUnavailable(t, err)
 	require.NoError(t, err)
 
 	// Final prompt should be within token limit
+	assert.LessOrEqual(t, len(tokens), 50, "Final prompt should be within token limit")
+}
+
+func TestTokenLimitInDocumentTypeGeneration(t *testing.T) {
+	testLogger := logrus.WithField("test", "test")
+
+	// Save current env and restore after test
+	originalLimit := os.Getenv("TOKEN_LIMIT")
+	defer os.Setenv("TOKEN_LIMIT", originalLimit)
+
+	// Initialize template for document type
+	var err error
+	documentTypeTemplate, err = template.New("document_type").Parse(testDocumentTypeTemplate)
+	require.NoError(t, err)
+
+	mockLLM := &mockLLM{}
+	app := &App{
+		LLM: mockLLM,
+	}
+
+	longContent := "This is a very long content that would normally exceed token limits. " +
+		"It contains multiple sentences and should be truncated appropriately."
+
+	os.Setenv("TOKEN_LIMIT", "50")
+	resetTokenLimit()
+
+	ctx := context.Background()
+	availableDocTypes := []string{"Invoice", "Receipt", "Contract"}
+
+	_, err = app.getSuggestedDocumentType(ctx, longContent, "Test Title", availableDocTypes, "Invoice", testLogger)
+	skipIfTokenEncodingUnavailable(t, err)
+	require.NoError(t, err)
+
+	splitter := textsplitter.NewTokenSplitter()
+	tokens, err := splitter.SplitText(mockLLM.lastPrompt)
+	skipIfTokenEncodingUnavailable(t, err)
+	require.NoError(t, err)
+
 	assert.LessOrEqual(t, len(tokens), 50, "Final prompt should be within token limit")
 }
 

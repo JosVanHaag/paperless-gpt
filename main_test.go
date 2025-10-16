@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -28,12 +29,18 @@ type TestCase struct {
 
 // Test our HTTP-Client
 func TestCreateCustomHTTPClient(t *testing.T) {
-	// Create a test server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("Skipping HTTP client test: %v", err)
+	}
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify custom header
 		assert.Equal(t, "paperless-gpt", r.Header.Get("X-Title"), "Expected X-Title header")
 		w.WriteHeader(http.StatusOK)
 	}))
+	server.Listener = listener
+	server.Start()
 	defer server.Close()
 
 	// Get custom client

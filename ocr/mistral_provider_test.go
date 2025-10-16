@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,11 +12,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTestServer() (*httptest.Server, func()) {
+func newLocalHTTPServer(t *testing.T, handler http.Handler) *httptest.Server {
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("Skipping Mistral OCR provider test: %v", err)
+	}
+	server := httptest.NewUnstartedServer(handler)
+	server.Listener = listener
+	server.Start()
+	return server
+}
+
+func setupTestServer(t *testing.T) (*httptest.Server, func()) {
 	origOCREndpoint := mistralOCREndpoint
 	origFilesEndpoint := mistralFilesEndpoint
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("Skipping Mistral OCR provider test: %v", err)
+	}
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/ocr" {
 			handleOCRRequest(w, r)
 		} else if r.URL.Path == "/v1/files" {
@@ -24,6 +41,8 @@ func setupTestServer() (*httptest.Server, func()) {
 			handleGetSignedURLRequest(w, r)
 		}
 	}))
+	server.Listener = listener
+	server.Start()
 
 	mistralOCREndpoint = server.URL + "/v1/ocr"
 	mistralFilesEndpoint = server.URL + "/v1/files"
@@ -166,7 +185,7 @@ func TestNewMistralOCRProvider(t *testing.T) {
 }
 
 func TestMistralOCRProvider_ProcessImage(t *testing.T) {
-	_, cleanup := setupTestServer()
+	_, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	// Create provider with mocked API endpoint
@@ -187,7 +206,7 @@ func TestMistralOCRProvider_ProcessImage(t *testing.T) {
 }
 
 func TestMistralOCRProvider_UploadFile(t *testing.T) {
-	_, cleanup := setupTestServer()
+	_, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	// Create provider with mocked API endpoint
@@ -205,7 +224,7 @@ func TestMistralOCRProvider_UploadFile(t *testing.T) {
 }
 
 func TestMistralOCRProvider_GetSignedURL(t *testing.T) {
-	_, cleanup := setupTestServer()
+	_, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	// Create provider with mocked API endpoint
@@ -222,7 +241,7 @@ func TestMistralOCRProvider_GetSignedURL(t *testing.T) {
 }
 
 func TestMistralOCRProvider_ProcessDocument(t *testing.T) {
-	_, cleanup := setupTestServer()
+	_, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	// Create provider with mocked API endpoint
@@ -276,7 +295,7 @@ func TestMistralOCRProvider_ErrorHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := newLocalHTTPServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				fmt.Fprintln(w, tt.response)
 			}))

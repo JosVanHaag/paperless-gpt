@@ -10,6 +10,7 @@ interface SuggestionCardProps {
   onTagDeletion: (docId: number, index: number) => void;
   onCorrespondentChange: (docId: number, correspondent: string) => void;
   onCreatedDateChange: (docId: number, createdDate: string) => void;
+  onDocumentTypeChange: (docId: number, documentType: string) => void;
   onCustomFieldSuggestionToggle: (docId: number, fieldId: number) => void;
 }
 
@@ -21,6 +22,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   onTagDeletion,
   onCorrespondentChange,
   onCreatedDateChange,
+  onDocumentTypeChange,
   onCustomFieldSuggestionToggle,
 }) => {
   const sortedAvailableTags = availableTags.sort((a, b) => a.name.localeCompare(b.name));
@@ -134,6 +136,23 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
             className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 mt-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
             placeholder="Created Date"
           />
+        </div>
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Suggested Document Type
+          </label>
+          <input
+            type="text"
+            value={suggestion.suggested_document_type || ""}
+            onChange={(e) => onDocumentTypeChange(suggestion.id, e.target.value)}
+            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 mt-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
+            placeholder={document.document_type_name || "Document Type"}
+          />
+          {document.document_type_name && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Current type: {document.document_type_name}
+            </p>
+          )}
         </div>
         {suggestion.suggested_custom_fields && suggestion.suggested_custom_fields.length > 0 && (
           <div className="mt-4">

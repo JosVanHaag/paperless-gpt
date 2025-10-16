@@ -1,0 +1,24 @@
+I will provide you with the title and content of a document. Choose the most appropriate document type from the list below.
+
+Rules:
+- Respond with exactly one document type name that appears in the list.
+- If none of the types are applicable, respond with "Unknown".
+- Do not add any additional words or explanations.
+
+The content is likely in {{.Language}}.
+
+<available_document_types>
+{{ .AvailableDocumentTypes | join ", " }}
+</available_document_types>
+
+<current_document_type>
+{{ .CurrentDocumentType }}
+</current_document_type>
+
+<title>
+{{ .Title }}
+</title>
+
+<content>
+{{ .Content }}
+</content>

@@ -13,6 +13,7 @@ export interface Document {
   content: string;
   tags: string[];
   correspondent: string;
+  document_type_name?: string;
 }
 
 export interface GenerateSuggestionsRequest {
@@ -24,6 +25,7 @@ export interface GenerateSuggestionsRequest {
   generate_custom_fields?: boolean;
   selected_custom_field_ids?: number[];
   custom_field_write_mode?: string;
+  generate_document_type?: boolean;
 }
 
 export interface CustomFieldSuggestion {
@@ -41,6 +43,7 @@ export interface DocumentSuggestion {
   suggested_content?: string;
   suggested_correspondent?: string;
   suggested_created_date?: string;
+  suggested_document_type?: string;
   suggested_custom_fields?: CustomFieldSuggestion[];
 }
 
@@ -70,6 +73,7 @@ const DocumentProcessor: React.FC = () => {
   const [generateCorrespondents, setGenerateCorrespondents] = useState(true);
   const [generateCreatedDate, setGenerateCreatedDate] = useState(true);
   const [generateCustomFields, setGenerateCustomFields] = useState(true);
+  const [generateDocumentType, setGenerateDocumentType] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Custom hook to fetch initial data
@@ -113,6 +117,7 @@ const DocumentProcessor: React.FC = () => {
         generate_correspondents: generateCorrespondents,
         generate_created_date: generateCreatedDate,
         generate_custom_fields: generateCustomFields,
+        generate_document_type: generateDocumentType,
       };
 
       const { data } = await axios.post<DocumentSuggestion[]>(
@@ -221,6 +226,14 @@ const DocumentProcessor: React.FC = () => {
       )
     );
   }
+
+  const handleDocumentTypeChange = (docId: number, documentType: string) => {
+    setSuggestions((prevSuggestions) =>
+      prevSuggestions.map((doc) =>
+        doc.id === docId ? { ...doc, suggested_document_type: documentType } : doc
+      )
+    );
+  };
 
   const handleCreatedDateChange = (docId: number, createdDate: string) => {
     setSuggestions((prevSuggestions) =>
@@ -360,6 +373,15 @@ const DocumentProcessor: React.FC = () => {
               />
               <span className="text-gray-700 dark:text-gray-200">Generate Custom Fields</span>
             </label>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={generateDocumentType}
+                onChange={(e) => setGenerateDocumentType(e.target.checked)}
+                className="dark:bg-gray-700 dark:border-gray-600"
+              />
+              <span className="text-gray-700 dark:text-gray-200">Generate Document Type</span>
+            </label>
           </div>
         </DocumentsToProcess>
       ) : (
@@ -371,6 +393,7 @@ const DocumentProcessor: React.FC = () => {
           onTagDeletion={handleTagDeletion}
           onCorrespondentChange={handleCorrespondentChange}
           onCreatedDateChange={handleCreatedDateChange}
+          onDocumentTypeChange={handleDocumentTypeChange}
           onCustomFieldSuggestionToggle={handleCustomFieldSuggestionToggle}
           onBack={resetSuggestions}
           onUpdate={handleUpdateDocuments}

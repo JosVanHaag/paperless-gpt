@@ -83,6 +83,7 @@ var (
 	correspondentTemplate *template.Template
 	createdDateTemplate   *template.Template
 	customFieldTemplate   *template.Template
+	documentTypeTemplate  *template.Template
 	ocrTemplate           *template.Template
 	adhocAnalysisTemplate *template.Template
 	templateMutex         sync.RWMutex
@@ -791,6 +792,10 @@ func loadTemplates() error {
 		return err
 	}
 	customFieldTemplate, err = loadTemplate("custom_field_prompt.tmpl")
+	if err != nil {
+		return err
+	}
+	documentTypeTemplate, err = loadTemplate("document_type_prompt.tmpl")
 	if err != nil {
 		return err
 	}

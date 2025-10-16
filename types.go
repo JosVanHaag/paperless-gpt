@@ -19,9 +19,9 @@ type GetDocumentsApiResponse struct {
 // GetDocumentApiResponseResult is a part of the response payload for /documents endpoint.
 // But we are only interested in a subset of the fields.
 type GetDocumentApiResponseResult struct {
-	ID            int `json:"id"`
-	Correspondent int `json:"correspondent"`
-	// DocumentType        interface{}   `json:"document_type"`
+	ID            int  `json:"id"`
+	Correspondent int  `json:"correspondent"`
+	DocumentType  *int `json:"document_type"`
 	// StoragePath         interface{}   `json:"storage_path"`
 	Title   string `json:"title"`
 	Content string `json:"content"`
@@ -95,6 +95,7 @@ type GenerateSuggestionsRequest struct {
 	GenerateCorrespondents bool       `json:"generate_correspondents,omitempty"`
 	GenerateCreatedDate    bool       `json:"generate_created_date,omitempty"`
 	GenerateCustomFields   bool       `json:"generate_custom_fields,omitempty"`
+	GenerateDocumentType   bool       `json:"generate_document_type,omitempty"`
 }
 
 // AnalyzeDocumentsRequest is the request payload for the ad-hoc analysis
@@ -119,10 +120,11 @@ type DocumentSuggestion struct {
 	SuggestedContent       string                  `json:"suggested_content,omitempty"`
 	SuggestedCorrespondent string                  `json:"suggested_correspondent,omitempty"`
 	SuggestedCreatedDate   string                  `json:"suggested_created_date,omitempty"`
+	SuggestedDocumentType  string                  `json:"suggested_document_type,omitempty"`
 	SuggestedCustomFields  []CustomFieldSuggestion `json:"suggested_custom_fields,omitempty"`
 	KeepOriginalTags       bool                    `json:"keep_original_tags,omitempty"`
 	RemoveTags             []string                `json:"remove_tags,omitempty"`
-  AddTags                []string                `json:"add_tags,omitempty"`
+	AddTags                []string                `json:"add_tags,omitempty"`
 	CustomFieldsWriteMode  string                  `json:"custom_fields_write_mode,omitempty"`
 	CustomFieldsEnable     bool                    `json:"custom_fields_enable"`
 }

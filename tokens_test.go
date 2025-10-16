@@ -270,6 +270,7 @@ Content: {{.Content}}
 
 			// First get available tokens
 			availableTokens, err := getAvailableTokensForContent(tmpl, data)
+			skipIfTokenEncodingUnavailable(t, err)
 			if tc.wantError {
 				require.Error(t, err)
 				return
@@ -294,6 +295,7 @@ Content: {{.Content}}
 			if tc.limit > 0 {
 				splitter := textsplitter.NewTokenSplitter()
 				tokens, err := splitter.SplitText(result)
+				skipIfTokenEncodingUnavailable(t, err)
 				require.NoError(t, err)
 				assert.LessOrEqual(t, len(tokens), tc.limit)
 			}
